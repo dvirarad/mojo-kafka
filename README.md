@@ -1,63 +1,79 @@
+<div align="center">
+
 # mojo-kafka
 
-> Apache Kafka client for [Mojo](https://www.modular.com/mojo) — `librdkafka` bindings with a Pythonic producer / consumer / admin API. Stream Kafka straight into your Mojo ML pipelines.
+**Apache Kafka client for [Mojo🔥](https://www.modular.com/mojo) — backed by [`librdkafka`](https://github.com/confluentinc/librdkafka).**
 
+Stream Kafka straight into your Mojo / MAX inference loop. No Python hop, no GIL on the hot path.
+
+[![CI](https://github.com/dvirarad/mojo-kafka/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dvirarad/mojo-kafka/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/dvirarad/mojo-kafka?include_prereleases&sort=semver&label=release)](https://github.com/dvirarad/mojo-kafka/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Mojo](https://img.shields.io/badge/Mojo-%E2%89%A524.6-orange)](https://docs.modular.com/mojo/)
-[![Status](https://img.shields.io/badge/status-alpha-yellow)](#project-status)
+[![librdkafka](https://img.shields.io/badge/librdkafka-%E2%89%A52.3-red)](https://github.com/confluentinc/librdkafka)
+[![Status](https://img.shields.io/badge/status-alpha-yellow)](#status)
 
-## Why
+</div>
 
-Mojo's pitch is *"Python ergonomics, systems performance, AI-native"*. The natural place this collides with the real world is the data pipeline — and most ML data pipelines live on Kafka. Today, if you want to consume a Kafka topic from Mojo you have to:
+---
 
-1. Drop down to Python and use `confluent-kafka-python`, losing Mojo's perf advantage on the hot path.
-2. Wrap `librdkafka` yourself through Mojo's C FFI — possible, but tedious.
+## Why this exists
 
-`mojo-kafka` is option (3): a thin, well-typed Mojo wrapper over `librdkafka` so you can produce / consume / admin from Mojo directly.
+Mojo's pitch is *"Python ergonomics, systems performance, AI-native."* The place that pitch meets the real world is the **data pipeline** — and most ML pipelines today drink from Kafka.
+
+If you want a Kafka topic feeding a Mojo model today, your options are:
+
+1. **Hop through Python** with `confluent-kafka-python` — every message pays a Python ↔ Mojo FFI tax, plus you're back in GIL territory.
+2. **Hand-roll `librdkafka` bindings** yourself — possible, but it's a lot of opaque pointers and struct offsets.
+
+`mojo-kafka` is **option 3**: a Mojo-idiomatic, Pythonic API over the same `librdkafka` C foundation that every non-JVM Kafka client (Go, Rust, Python, Node, .NET) is already built on. Familiar shape, native perf, no FFI tax per message.
 
 ```mojo
 from kafka import Consumer, ConsumerConfig
 
 fn main() raises:
-    var cfg = ConsumerConfig(
+    var c = Consumer(ConsumerConfig(
         bootstrap_servers="localhost:9092",
         group_id="mojo-ml-trainer",
         auto_offset_reset="earliest",
-    )
-    var consumer = Consumer(cfg)
-    consumer.subscribe(["embeddings"])
-
+    ))
+    c.subscribe(["embeddings"])
     while True:
-        var msg = consumer.poll(timeout_ms=1000)
+        var msg = c.poll(timeout_ms=1000)
         if msg:
-            # hand the raw bytes straight to a tensor on the GPU
-            run_inference(msg.value)
+            run_inference(msg.value)    # straight into your Mojo / MAX model
+    c.close()
 ```
 
 ## Install
 
-`mojo-kafka` is a thin wrapper, so you need `librdkafka` available at runtime.
-
-```bash
-# macOS
-brew install librdkafka
-
-# Debian / Ubuntu
-sudo apt install librdkafka-dev
-
-# Fedora
-sudo dnf install librdkafka-devel
-```
-
-Then add it as a dependency in your Mojo project:
+`mojo-kafka` depends on `librdkafka` at runtime. Recommended: let `pixi` handle everything.
 
 ```toml
 # pixi.toml
+[workspace]
+channels = ["https://conda.modular.com/max", "conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+
 [dependencies]
-mojo-kafka = { git = "https://github.com/dvirarad/mojo-kafka", branch = "main" }
+max = ">=24.6"
+librdkafka = ">=2.3.0"
 ```
 
-Or vendor `src/kafka/` directly into your project — it's small and dependency-free on the Mojo side.
+Then add `mojo-kafka` as a Mojo dependency (vendor the package, or pull `src/kafka/` into your tree — it's small and dependency-free on the Mojo side):
+
+```bash
+git clone https://github.com/dvirarad/mojo-kafka.git
+cp -r mojo-kafka/src/kafka your_project/src/
+```
+
+Prefer system packages? `librdkafka` is widely available:
+
+```bash
+brew install librdkafka                 # macOS
+sudo apt install librdkafka-dev         # Debian / Ubuntu
+sudo dnf install librdkafka-devel       # Fedora
+```
 
 ## Quickstart
 
@@ -81,12 +97,13 @@ fn main() raises:
     var c = Consumer(ConsumerConfig(
         bootstrap_servers="localhost:9092",
         group_id="my-app",
+        auto_offset_reset="earliest",
     ))
     c.subscribe(["events"])
     for _ in range(100):
         var msg = c.poll(1000)
         if msg:
-            print(msg.topic, msg.key, msg.value)
+            print(msg.partition, msg.offset, msg.key, msg.value)
     c.close()
 ```
 
@@ -108,39 +125,82 @@ See [`examples/`](examples/) for runnable scripts, including [`examples/ml_pipel
 
 | Symbol | What it does |
 |---|---|
-| `Producer` / `ProducerConfig` | Produce messages, async with `flush()` / `poll()` |
-| `Consumer` / `ConsumerConfig` | Subscribe to topics, poll for messages, commit offsets |
-| `AdminClient` | Create / delete / list topics |
-| `Message` | `topic`, `partition`, `offset`, `key`, `value`, `timestamp_ms`, `headers` |
-| `KafkaError` | Raised with `librdkafka` error code + human message |
+| `Producer` / `ProducerConfig` | Produce messages; `flush()` / `poll()` for delivery |
+| `Consumer` / `ConsumerConfig` | Subscribe, poll for messages, commit offsets, close |
+| `AdminClient` | Create / list topics |
+| `Message` | `partition`, `offset`, `key`, `value` (full `topic` + `headers` on the v0.2 roadmap) |
+| `KafkaError` | Raised with `librdkafka` error code + human description |
 
-Anything more exotic (transactions, schema registry, exactly-once semantics) — file an issue. We'd rather get the 80% smooth than the 100% half-baked.
+The full configuration surface mirrors `librdkafka` — under-the-hood, `ProducerConfig` / `ConsumerConfig` translate snake_case fields into the canonical `librdkafka` property names (`bootstrap.servers`, `auto.offset.reset`, …), so anything the C client supports is reachable.
 
-## Project status
+## Architecture
 
-**Alpha — API may shift.** Initial scaffold targets `Mojo ≥ 24.6`. The FFI calls bind real `librdkafka` symbols, but you should expect rough edges around:
+```
+┌─────────────────────────────────────────────────────┐
+│  your Mojo / MAX code                               │
+│                                                     │
+│  from kafka import Producer, Consumer, AdminClient  │
+└────────────────────┬────────────────────────────────┘
+                     │  Pythonic Mojo API
+┌────────────────────▼────────────────────────────────┐
+│  src/kafka/{producer,consumer,admin,config}.mojo    │
+│  typed structs, lifetime management, error mapping  │
+└────────────────────┬────────────────────────────────┘
+                     │  external_call[...]
+┌────────────────────▼────────────────────────────────┐
+│  src/kafka/_ffi.mojo                                │
+│  raw librdkafka symbol declarations                 │
+└────────────────────┬────────────────────────────────┘
+                     │  C ABI
+┌────────────────────▼────────────────────────────────┐
+│  librdkafka.so / .dylib    (BSD-2-Clause, dynamic)  │
+└─────────────────────────────────────────────────────┘
+```
 
-- Header passing on the consumer side
-- Error code → exception mapping
-- Lifetime of opaque handles across `^owned` transfers
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the longer write-up on FFI lifetimes and the C handle story.
 
-If you hit one, please open an issue with a repro — that's the fastest way to harden this.
+## Status
+
+**Alpha.** `v0.1.0` is the first public release. The FFI layer binds real `librdkafka` symbols, smoke tests pass, and the integration test runs against `apache/kafka:3.7.0` in CI. Expect:
+
+- API shape may still shift in `v0.2`.
+- A few rough edges are tracked as [`good first issue`](https://github.com/dvirarad/mojo-kafka/labels/good%20first%20issue) — including [exposing `Message.topic`](https://github.com/dvirarad/mojo-kafka/issues/1), [headers](https://github.com/dvirarad/mojo-kafka/issues/2), [a typed `KafkaErrorKind`](https://github.com/dvirarad/mojo-kafka/issues/3), and the [transactional producer](https://github.com/dvirarad/mojo-kafka/issues/4).
+
+Use it in spikes and prototypes today. Wait for `v1.0` before betting a production pipeline.
+
+## Roadmap
+
+- **v0.2** — `Message.topic`, headers, typed `KafkaErrorKind`, async `consume()` generator.
+- **v0.3** — Transactional producer, exactly-once semantics, Schema Registry helpers (Avro / Protobuf).
+- **v0.4** — Tensor-zero-copy (`Message.value` as `UnsafePointer`) so MAX tensors can wrap incoming bytes without a copy.
+- **v1.0** — API stable; production-ready feature parity with `confluent-kafka-python`.
+
+Feature requests go in the [issue tracker](https://github.com/dvirarad/mojo-kafka/issues). Comment with a 👍 to vote.
 
 ## Contributing
 
-PRs welcome. The interesting layers to know about:
+We protect `main` — contributions land via PR with passing CI and a review from a maintainer. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full guide, but the short version is:
 
-- `src/kafka/_ffi.mojo` — raw `librdkafka` symbol declarations
-- `src/kafka/config.mojo` — typed config builder over `rd_kafka_conf_t`
-- `src/kafka/producer.mojo` / `consumer.mojo` / `admin.mojo` — public API
+1. Fork & branch.
+2. `pixi install`
+3. Make your change; add a test in `tests/` if behavior changes.
+4. `pixi run lint && pixi run test`
+5. Open a PR. CI must be green.
 
-Run the smoke tests against a local Kafka:
+Interesting layers if you're new:
 
-```bash
-docker run -d --name=kafka -p 9092:9092 apache/kafka:3.7.0
-mojo test tests/
-```
+- [`src/kafka/_ffi.mojo`](src/kafka/_ffi.mojo) — raw `librdkafka` symbol declarations.
+- [`src/kafka/config.mojo`](src/kafka/config.mojo) — typed config builder over `rd_kafka_conf_t`.
+- [`src/kafka/{producer,consumer,admin}.mojo`](src/kafka/) — public API.
+
+Security issues? See [`SECURITY.md`](SECURITY.md) — please **don't** open a public issue for a CVE-shaped thing.
 
 ## License
 
-Apache 2.0. `librdkafka` itself is BSD-2-Clause and is dynamically linked, not bundled.
+Apache 2.0 — see [`LICENSE`](LICENSE). `librdkafka` itself is BSD-2-Clause and is dynamically linked, not bundled or redistributed.
+
+## Acknowledgments
+
+- Confluent's [`librdkafka`](https://github.com/confluentinc/librdkafka) — the C client this whole project stands on.
+- [`confluent-kafka-python`](https://github.com/confluentinc/confluent-kafka-python) — API shape we tried to honor.
+- The Modular team, for [Mojo🔥](https://www.modular.com/mojo) and a C FFI that makes wrappers like this possible.
