@@ -16,5 +16,5 @@ package = "mojo package src/kafka -o dist/kafka.mojopkg"
 test = "mojo run tests/test_smoke.mojo"
 
 [dependencies]
-max = ">=24.6"
+max = "==25.7.0"
 librdkafka = ">=2.3.0"
