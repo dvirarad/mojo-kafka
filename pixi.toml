@@ -12,6 +12,8 @@ example-producer = "mojo run examples/producer_basic.mojo"
 example-consumer = "mojo run examples/consumer_basic.mojo"
 example-ml = "mojo run examples/ml_pipeline.mojo"
 test = "mojo test tests/"
+lint = "mojo format --check src/ examples/ tests/"
+package = "mojo package src/kafka -o dist/kafka.mojopkg"
 
 [dependencies]
 max = ">=24.6"

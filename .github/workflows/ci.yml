@@ -17,15 +17,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Magic CLI
+      - name: Install pixi
         run: |
-          curl -ssL https://magic.modular.com/ | bash
-          echo "$HOME/.modular/bin" >> $GITHUB_PATH
+          curl -fsSL https://pixi.sh/install.sh | bash
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+
+      - name: Resolve env
+        run: pixi install
 
       - name: Mojo format check
         run: |
-          mojo format --check src/ examples/ tests/ || \
-            (echo "::error::Run 'mojo format src/ examples/ tests/' to fix" && exit 1)
+          pixi run lint || \
+            (echo "::error::Run 'pixi run -- mojo format src/ examples/ tests/' to fix" && exit 1)
 
   smoke:
     name: Smoke tests (no broker)
@@ -37,21 +40,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install librdkafka (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y librdkafka-dev
-
-      - name: Install librdkafka (macOS)
-        if: runner.os == 'macOS'
-        run: brew install librdkafka
-
-      - name: Install Magic CLI
+      - name: Install pixi
         run: |
-          curl -ssL https://magic.modular.com/ | bash
-          echo "$HOME/.modular/bin" >> $GITHUB_PATH
+          curl -fsSL https://pixi.sh/install.sh | bash
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+
+      - name: Resolve env
+        run: pixi install
 
       - name: Run smoke tests
-        run: magic run test
+        run: pixi run test
 
   integration:
     name: Integration (against live Kafka)
@@ -70,13 +68,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install librdkafka
-        run: sudo apt-get update && sudo apt-get install -y librdkafka-dev
-
-      - name: Install Magic CLI
+      - name: Install pixi
         run: |
-          curl -ssL https://magic.modular.com/ | bash
-          echo "$HOME/.modular/bin" >> $GITHUB_PATH
+          curl -fsSL https://pixi.sh/install.sh | bash
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+
+      - name: Resolve env
+        run: pixi install
 
       - name: Wait for Kafka
         run: |
@@ -89,4 +87,4 @@ jobs:
       - name: Run integration tests
         env:
           KAFKA_BOOTSTRAP: localhost:9092
-        run: magic run test
+        run: pixi run test
