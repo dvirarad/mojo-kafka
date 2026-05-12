@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      kafka:
+        image: apache/kafka:3.7.0
+        ports:
+          - 9092:9092
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install librdkafka
+        run: sudo apt-get update && sudo apt-get install -y librdkafka-dev
+
+      - name: Install Mojo (Magic CLI)
+        run: curl -ssL https://magic.modular.com/ | bash
+
+      - name: Wait for Kafka
+        run: |
+          for i in $(seq 1 30); do
+            nc -z localhost 9092 && echo "kafka up" && exit 0
+            sleep 2
+          done
+          echo "kafka never came up" && exit 1
+
+      - name: Run smoke tests
+        run: magic run test

@@ -1,0 +1,13 @@
+.magic/
+.pixi/
+.mojocache/
+.DS_Store
+build/
+*.mojopkg
+*.so
+*.dylib
+*.dll
+.venv/
+__pycache__/
+.vscode/
+.idea/
