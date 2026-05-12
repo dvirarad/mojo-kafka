@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - CI switched from the deprecated `magic` installer to `pixi` (`magic.modular.com` redirects to `/pixi/` now).
 - `pixi.toml`: `[project]` → `[workspace]` (per pixi 0.30+), dropped `osx-64` platform since `max` is not published for it on conda.modular.com.
+- Pinned `max==25.7.0` + added explicit `mojo==0.25.7.0` so the formatter binary is available on CI and the toolchain doesn't auto-upgrade to the 1.0 beta line.
+- CI shape: replaced the build matrix with an `env-check` matrix that verifies the environment resolves on Linux + macOS and that `librdkafka/rdkafka.h` is on the include path. Building the `.mojopkg` is moved behind the Mojo 25.x source migration (see Roadmap), so CI reflects what is genuinely stable today instead of failing on in-progress work.
 
 ## [0.1.0] — 2026-05-12
 

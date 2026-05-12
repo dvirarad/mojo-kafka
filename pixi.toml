@@ -17,4 +17,5 @@ test = "mojo run tests/test_smoke.mojo"
 
 [dependencies]
 max = "==25.7.0"
+mojo = "==0.25.7.0"
 librdkafka = ">=2.3.0"

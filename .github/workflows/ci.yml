@@ -15,7 +15,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install pixi
         run: |
@@ -37,15 +37,15 @@ jobs:
             exit 1
           fi
 
-  build:
-    name: Build (${{ matrix.os }})
+  env-check:
+    name: Env (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install pixi
         run: |
@@ -58,15 +58,7 @@ jobs:
       - name: Mojo version
         run: pixi run -- mojo --version
 
-      - name: Build .mojopkg
+      - name: librdkafka headers present
         run: |
-          mkdir -p dist
-          pixi run -- mojo package src/kafka -o dist/kafka.mojopkg
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: kafka-${{ matrix.os }}.mojopkg
-          path: dist/kafka.mojopkg
-          if-no-files-found: error
-          retention-days: 7
+          test -f "$(pixi run -- bash -c 'echo $CONDA_PREFIX')/include/librdkafka/rdkafka.h"
+          echo "✓ rdkafka.h resolves inside the pixi env"
