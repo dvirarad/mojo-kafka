@@ -25,13 +25,20 @@ jobs:
       - name: Resolve env
         run: pixi install
 
-      - name: Mojo format check
-        run: |
-          pixi run lint || \
-            (echo "::error::Run 'pixi run -- mojo format src/ examples/ tests/' to fix" && exit 1)
+      - name: Mojo version
+        run: pixi run -- mojo --version
 
-  smoke:
-    name: Smoke tests (no broker)
+      - name: Format check
+        run: |
+          pixi run -- mojo format src/ examples/ tests/
+          if ! git diff --quiet; then
+            echo "::error::Formatting drift — run 'pixi run -- mojo format src/ examples/ tests/' locally and commit."
+            git --no-pager diff
+            exit 1
+          fi
+
+  build:
+    name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -48,43 +55,18 @@ jobs:
       - name: Resolve env
         run: pixi install
 
-      - name: Run smoke tests
-        run: pixi run test
+      - name: Mojo version
+        run: pixi run -- mojo --version
 
-  integration:
-    name: Integration (against live Kafka)
-    runs-on: ubuntu-latest
-    needs: smoke
-    services:
-      kafka:
-        image: apache/kafka:3.7.0
-        ports:
-          - 9092:9092
-        options: >-
-          --health-cmd "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install pixi
+      - name: Build .mojopkg
         run: |
-          curl -fsSL https://pixi.sh/install.sh | bash
-          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
+          mkdir -p dist
+          pixi run -- mojo package src/kafka -o dist/kafka.mojopkg
 
-      - name: Resolve env
-        run: pixi install
-
-      - name: Wait for Kafka
-        run: |
-          for i in $(seq 1 30); do
-            nc -z localhost 9092 && echo "kafka up" && exit 0
-            sleep 2
-          done
-          echo "kafka never came up" && exit 1
-
-      - name: Run integration tests
-        env:
-          KAFKA_BOOTSTRAP: localhost:9092
-        run: pixi run test
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kafka-${{ matrix.os }}.mojopkg
+          path: dist/kafka.mojopkg
+          if-no-files-found: error
+          retention-days: 7

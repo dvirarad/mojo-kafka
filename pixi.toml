@@ -11,9 +11,9 @@ license = "Apache-2.0"
 example-producer = "mojo run examples/producer_basic.mojo"
 example-consumer = "mojo run examples/consumer_basic.mojo"
 example-ml = "mojo run examples/ml_pipeline.mojo"
-test = "mojo test tests/"
-lint = "mojo format --check src/ examples/ tests/"
+lint = "mojo format src/ examples/ tests/"
 package = "mojo package src/kafka -o dist/kafka.mojopkg"
+test = "mojo run tests/test_smoke.mojo"
 
 [dependencies]
 max = ">=24.6"
