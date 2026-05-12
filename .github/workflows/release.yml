@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Magic CLI
+        run: |
+          curl -ssL https://magic.modular.com/ | bash
+          echo "$HOME/.modular/bin" >> $GITHUB_PATH
+
+      - name: Install librdkafka
+        run: sudo apt-get update && sudo apt-get install -y librdkafka-dev
+
+      - name: Build .mojopkg
+        run: |
+          mkdir -p dist
+          mojo package src/kafka -o dist/kafka-${{ github.ref_name }}.mojopkg
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          {
+            echo 'BODY<<EOF'
+            git log --pretty=format:'- %s' $(git describe --tags --abbrev=0 HEAD^ 2>/dev/null)..HEAD || \
+              git log --pretty=format:'- %s'
+            echo
+            echo EOF
+          } >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.BODY }}
+          files: |
+            dist/*.mojopkg
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}

@@ -1,0 +1,38 @@
+name: Bug report
+description: Something doesn't work as documented.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: A minimal repro is worth a thousand words.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: mojo
+    attributes:
+      label: Mojo version
+      placeholder: "mojo --version"
+    validations:
+      required: true
+  - type: input
+    id: librdkafka
+    attributes:
+      label: librdkafka version
+      placeholder: "pkg-config --modversion rdkafka  (or brew info librdkafka)"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS / arch
+      placeholder: "macOS 14.4 arm64 / Ubuntu 22.04 x86_64"
+    validations:
+      required: true
