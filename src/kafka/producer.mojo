@@ -43,24 +43,35 @@ struct Producer:
         value: String,
         key: String = "",
     ) raises:
-        """Enqueue a message. Returns immediately; ack arrives on next `poll()`."""
+        """Enqueue a message. Returns immediately; ack arrives on next `poll()`.
+        """
         var rc = external_call[
             "rd_kafka_producev",
             Int32,
             OpaquePointer,
             # vtype, topic
-            Int32, UnsafePointer[Int8],
+            Int32,
+            UnsafePointer[Int8],
             # vtype, key, klen
-            Int32, UnsafePointer[Int8], Int,
+            Int32,
+            UnsafePointer[Int8],
+            Int,
             # vtype, value, vlen
-            Int32, UnsafePointer[Int8], Int,
+            Int32,
+            UnsafePointer[Int8],
+            Int,
             # END
             Int32,
         ](
             self._rk,
-            RD_KAFKA_VTYPE_TOPIC, topic.unsafe_cstr_ptr(),
-            RD_KAFKA_VTYPE_KEY, key.unsafe_cstr_ptr(), len(key),
-            RD_KAFKA_VTYPE_VALUE, value.unsafe_cstr_ptr(), len(value),
+            RD_KAFKA_VTYPE_TOPIC,
+            topic.unsafe_cstr_ptr(),
+            RD_KAFKA_VTYPE_KEY,
+            key.unsafe_cstr_ptr(),
+            len(key),
+            RD_KAFKA_VTYPE_VALUE,
+            value.unsafe_cstr_ptr(),
+            len(value),
             RD_KAFKA_VTYPE_END,
         )
         if rc != 0:
@@ -71,7 +82,8 @@ struct Producer:
         return rd_kafka_poll(self._rk, timeout_ms)
 
     fn flush(self, timeout_ms: Int32 = 5000) raises:
-        """Block until all enqueued messages are sent or `timeout_ms` elapses."""
+        """Block until all enqueued messages are sent or `timeout_ms` elapses.
+        """
         var rc = rd_kafka_flush(self._rk, timeout_ms)
         if rc != 0:
             raise Error(String(err(rc)))

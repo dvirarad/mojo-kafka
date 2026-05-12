@@ -47,7 +47,13 @@ struct AdminClient:
             Int32,
             UnsafePointer[Int8],
             Int,
-        ](name.unsafe_cstr_ptr(), num_partitions, replication_factor, errbuf, 512)
+        ](
+            name.unsafe_cstr_ptr(),
+            num_partitions,
+            replication_factor,
+            errbuf,
+            512,
+        )
         if not new_topic:
             var msg = String(errbuf)
             errbuf.free()
@@ -69,7 +75,9 @@ struct AdminClient:
 
         _ = rd_kafka_poll(self._rk, timeout_ms)
 
-        external_call["rd_kafka_NewTopic_destroy", NoneType, OpaquePointer](new_topic)
+        external_call["rd_kafka_NewTopic_destroy", NoneType, OpaquePointer](
+            new_topic
+        )
         arr.free()
 
     fn list_topics(self, timeout_ms: Int32 = 5000) raises -> List[String]:
@@ -100,10 +108,16 @@ struct AdminClient:
         # alignment in librdkafka is 24 bytes per topic entry on 64-bit systems.
         var stride = 24
         for i in range(Int(topic_cnt)):
-            var name_ptr = topics_ptr.offset(i * stride).bitcast[UnsafePointer[Int8]]().load()
+            var name_ptr = (
+                topics_ptr.offset(i * stride)
+                .bitcast[UnsafePointer[Int8]]()
+                .load()
+            )
             if name_ptr:
                 out.append(String(name_ptr))
 
-        external_call["rd_kafka_metadata_destroy", NoneType, OpaquePointer](meta)
+        external_call["rd_kafka_metadata_destroy", NoneType, OpaquePointer](
+            meta
+        )
         meta_out.free()
         return out

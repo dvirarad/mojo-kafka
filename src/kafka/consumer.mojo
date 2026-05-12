@@ -52,7 +52,10 @@ fn _read_message(raw: OpaquePointer) raises -> Message:
     """Decode a `rd_kafka_message_t*` into a `Message` by offsets."""
     var base = raw.bitcast[UInt8]()
     var err_code = base.offset(0).bitcast[Int32]().load()
-    if err_code != RD_KAFKA_RESP_ERR_NO_ERROR and err_code != RD_KAFKA_RESP_ERR__PARTITION_EOF:
+    if (
+        err_code != RD_KAFKA_RESP_ERR_NO_ERROR
+        and err_code != RD_KAFKA_RESP_ERR__PARTITION_EOF
+    ):
         raise Error(String(err(err_code)))
 
     var partition = base.offset(16).bitcast[Int32]().load()

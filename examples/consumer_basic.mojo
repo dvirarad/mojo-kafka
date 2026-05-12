@@ -20,7 +20,16 @@ fn main() raises:
         var maybe = c.poll(timeout_ms=1000)
         if maybe:
             var m = maybe.value()
-            print("partition=", m.partition, " offset=", m.offset, " key=", m.key, " value=", m.value)
+            print(
+                "partition=",
+                m.partition,
+                " offset=",
+                m.offset,
+                " key=",
+                m.key,
+                " value=",
+                m.value,
+            )
             seen += 1
 
     c.close()

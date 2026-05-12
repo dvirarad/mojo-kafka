@@ -26,6 +26,7 @@ alias RD_KAFKA_VTYPE_VALUE: Int32 = 5
 @value
 struct KafkaError(Stringable):
     """Wraps a librdkafka rd_kafka_resp_err_t with its human description."""
+
     var code: Int32
     var message: String
 
@@ -58,6 +59,7 @@ fn err(code: Int32) -> KafkaError:
 
 
 # --- conf_t -----------------------------------------------------------------
+
 
 fn rd_kafka_conf_new() -> OpaquePointer:
     return external_call["rd_kafka_conf_new", OpaquePointer]()
@@ -92,6 +94,7 @@ fn rd_kafka_conf_set(
 
 # --- rd_kafka_t -------------------------------------------------------------
 
+
 fn rd_kafka_new(
     rk_type: Int32,
     conf: OpaquePointer,
@@ -118,28 +121,25 @@ fn rd_kafka_destroy(rk: OpaquePointer):
 
 
 fn rd_kafka_poll(rk: OpaquePointer, timeout_ms: Int32) -> Int32:
-    return external_call[
-        "rd_kafka_poll", Int32, OpaquePointer, Int32
-    ](rk, timeout_ms)
+    return external_call["rd_kafka_poll", Int32, OpaquePointer, Int32](
+        rk, timeout_ms
+    )
 
 
 fn rd_kafka_flush(rk: OpaquePointer, timeout_ms: Int32) -> Int32:
-    return external_call[
-        "rd_kafka_flush", Int32, OpaquePointer, Int32
-    ](rk, timeout_ms)
+    return external_call["rd_kafka_flush", Int32, OpaquePointer, Int32](
+        rk, timeout_ms
+    )
 
 
 # --- consumer ---------------------------------------------------------------
 
+
 fn rd_kafka_poll_set_consumer(rk: OpaquePointer) -> Int32:
-    return external_call[
-        "rd_kafka_poll_set_consumer", Int32, OpaquePointer
-    ](rk)
+    return external_call["rd_kafka_poll_set_consumer", Int32, OpaquePointer](rk)
 
 
-fn rd_kafka_subscribe(
-    rk: OpaquePointer, topics: OpaquePointer
-) -> Int32:
+fn rd_kafka_subscribe(rk: OpaquePointer, topics: OpaquePointer) -> Int32:
     return external_call[
         "rd_kafka_subscribe", Int32, OpaquePointer, OpaquePointer
     ](rk, topics)
@@ -165,6 +165,7 @@ fn rd_kafka_consumer_close(rk: OpaquePointer) -> Int32:
 
 
 # --- topic partition list ---------------------------------------------------
+
 
 fn rd_kafka_topic_partition_list_new(size: Int32) -> OpaquePointer:
     return external_call[

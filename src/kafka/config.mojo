@@ -12,7 +12,8 @@ from ._ffi import rd_kafka_conf_new, rd_kafka_conf_set
 
 
 fn _key_to_librdkafka(name: String) -> String:
-    """Map `bootstrap_servers` -> `bootstrap.servers`. librdkafka keys use dots."""
+    """Map `bootstrap_servers` -> `bootstrap.servers`. librdkafka keys use dots.
+    """
     return name.replace("_", ".")
 
 
@@ -52,7 +53,9 @@ struct ProducerConfig:
         rd_kafka_conf_set(conf, "linger.ms", String(self.linger_ms))
         rd_kafka_conf_set(conf, "acks", self.acks)
         for item in self.extra.items():
-            rd_kafka_conf_set(conf, _key_to_librdkafka(item[].key), item[].value)
+            rd_kafka_conf_set(
+                conf, _key_to_librdkafka(item[].key), item[].value
+            )
         return conf
 
 
@@ -95,5 +98,7 @@ struct ConsumerConfig:
             "true" if self.enable_auto_commit else "false",
         )
         for item in self.extra.items():
-            rd_kafka_conf_set(conf, _key_to_librdkafka(item[].key), item[].value)
+            rd_kafka_conf_set(
+                conf, _key_to_librdkafka(item[].key), item[].value
+            )
         return conf

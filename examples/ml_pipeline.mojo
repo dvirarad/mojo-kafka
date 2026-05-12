@@ -35,11 +35,13 @@ fn run_inference(feature: Float64) -> Float64:
 
 
 fn main() raises:
-    var c = Consumer(ConsumerConfig(
-        bootstrap_servers="localhost:9092",
-        group_id="mojo-ml-pipeline",
-        auto_offset_reset="earliest",
-    ))
+    var c = Consumer(
+        ConsumerConfig(
+            bootstrap_servers="localhost:9092",
+            group_id="mojo-ml-pipeline",
+            auto_offset_reset="earliest",
+        )
+    )
     c.subscribe(["features"])
 
     print("Listening on 'features' — Ctrl-C to stop.")
